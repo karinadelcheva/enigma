@@ -43,8 +43,11 @@ class PlugLead:
 
 
 class Plugboard:
-    def __init__(self):
+    def __init__(self, plug_combinations=None):
         self.plugs = []
+        if plug_combinations:
+            for plug_combination in plug_combinations:
+                self.add(PlugLead(plug_combination))
 
     def add(self, plug):
         self.plugs.append(plug)
@@ -65,7 +68,7 @@ class Rotor:
         self.mapping = mappings[name]
         self.name = name
         self.location = location
-        self.ring_setting = ring_setting - 1
+        self.ring_setting = ring_setting
         self.notch = Notch(notch_map[name]) if name in notch_map else None
         self.position: int = string.ascii_uppercase.index(initial_position)
         self.initial_position = initial_position
@@ -78,35 +81,56 @@ class Rotor:
         self.prev_rotor = prev_rotor
 
     def encode_right_to_left(self, character):
-        # Signal enters pin side (right) and exits contact side (left)
-        # 1. Find which pin the signal enters on
+        # 1. Convert character to number (0-25)
         pin_pos = string.ascii_uppercase.index(character)
-
 
         # 2. Apply position offset
         pin_pos = (pin_pos + self.position) % ALPHABET_SIZE
-        # 3. Apply ring setting offset (opposite direction of position)
-        # pin_pos = (pin_pos - self.ring_setting) % 25
-        # 2. Follow internal wiring to contact
+
+        # 3. Apply ring setting offset
+        pin_pos = (pin_pos - (self.ring_setting - 1)) % ALPHABET_SIZE
+
+        # 4. Use the mapping to encode
         contact_char = self.mapping[pin_pos]
 
-        return contact_char
+        # 5. Reverse ring setting offset
+        contact_pos = string.ascii_uppercase.index(contact_char)
+        contact_pos = (contact_pos + (self.ring_setting - 1)) % ALPHABET_SIZE
+
+        # 6. Reverse position offset
+        contact_pos = (contact_pos - self.position) % ALPHABET_SIZE
+
+        return string.ascii_uppercase[contact_pos]
 
     def encode_left_to_right(self, character):
-        # Signal enters contact side (left) and exits pin side (right)
-        # 1. Find which contact the signal enters on
-        contact_pos = self.mapping.index(character)
+        # 1. Convert character to number (0-25)
+        contact_pos = string.ascii_uppercase.index(character)
 
-        # 2. Follow internal wiring backwards to pin
-        pin_char = string.ascii_uppercase[contact_pos]
+        # 2. Apply position offset
+        contact_pos = (contact_pos + self.position) % ALPHABET_SIZE
 
-        return pin_char
+        # 3. Apply ring setting offset
+        contact_pos = (contact_pos - (self.ring_setting - 1)) % ALPHABET_SIZE
+
+        # 4. Find the position in the mapping
+        char_in_alphabet = string.ascii_uppercase[contact_pos]
+        pin_pos = self.mapping.index(char_in_alphabet)
+
+        # 5. Reverse ring setting offset
+        pin_pos = (pin_pos + (self.ring_setting - 1)) % ALPHABET_SIZE
+
+        # 6. Reverse position offset
+        pin_pos = (pin_pos - self.position) % ALPHABET_SIZE
+
+        return string.ascii_uppercase[pin_pos]
 
     def rotate(self):
-        self.position =( self.position + 1 )% ALPHABET_SIZE
-
+        # Check if we should rotate the next rotor BEFORE we rotate
         if self.has_notch and self.is_at_notch and self.next_rotor:
             self.next_rotor.rotate()
+
+        # Then rotate this rotor
+        self.position = (self.position + 1) % ALPHABET_SIZE
 
     @property
     def has_notch(self):
@@ -127,7 +151,6 @@ class Rotor:
             return self.encode_left_to_right(character)
 
 
-
 def rotor_from_name(name, location: int = 0, ring_setting: int = 1, initial_position: string = "A"):
     return Rotor(name, location, ring_setting, initial_position)
 
@@ -138,7 +161,8 @@ class Enigma:
             rotor_sequence: list,
             reflector: str,
             ring_setting: list = None,
-            initial_positions: string = "AAA"
+            initial_positions: string = "AAA",
+            plug_combinations: list = None,
     ):
         if ring_setting is None:
             ring_setting = [1, 1, 1]
@@ -149,7 +173,7 @@ class Enigma:
         self.init_rotors(rotor_sequence, ring_setting)
         self.connect_rotors()
         print(f"Rotors set to {[[rotor.position, rotor.name] for rotor in self.rotors]}.")
-        self.plugboard = Plugboard()
+        self.plugboard = Plugboard(plug_combinations)
 
     @property
     def input_ring(self) -> Rotor:
@@ -189,25 +213,27 @@ class Enigma:
         """
         character = character.upper()
         Enigma.__validate_character(character)
+
+        # Initial plugboard encoding
         character = self.plugboard.encode(character)
+
+        # Rotate before encoding
         self.__rotate()
         print(f"Rotated to {[[rotor.position, rotor.name] for rotor in self.rotors]}.")
 
-        # pass characters
+        # Forward pass through rotors
         for rotor in self.rotors:
             character = rotor.encode_right_to_left(character)
             print(f"Rotor {rotor.name} Encryption: {character}")
-        for rotor in reversed(self.rotors[0:-1]):
+
+        # Backward pass through rotors (excluding reflector)
+        for rotor in reversed(self.rotors[:-1]):
             character = rotor.encode_left_to_right(character)
             print(f"Rotor {rotor.name} Encryption: {character}")
 
-        # # calculate offset between last rotor on right and static ring
-        inx = self.input_ring.mapping.index(character)
-        # first_rotor_offset = self.rotors[0].get_relative_position % ALPHABET_SIZE
-        # character = self.input_ring.mapping[(inx - first_rotor_offset) % ALPHABET_SIZE]
-        character = self.input_ring.mapping[inx]
-        # swap the character again if connected in the plugboard by lead.
+        # Final plugboard encoding
         return self.plugboard.encode(character)
+
 
     def decode_character(self, character: str):
         """Just points to encode_character. The two methods are equivalent in a DLL structure.
@@ -237,8 +263,9 @@ class Enigma:
 
 if __name__ == "__main__":
     # You can use this section to write tests and demonstrations of your enigma code.
-    enigma2 = Enigma(rotor_sequence=["I", "II", "III"], reflector="B", ring_setting=[1, 1, 1], initial_positions="AAZ")
-    print(enigma2.encode_character("A"))
+    enigma2 = Enigma(rotor_sequence=["I", "II", "III"], reflector="B", ring_setting=[1, 1, 1], initial_positions="AAZ",
+                     plug_combinations=["HL","MO","AJ","CX","BZ","SR","NI","YW", "DG","PK"])
+    print(enigma2.encode("HELLOWORLD"))
     enigma2 = Enigma(rotor_sequence=["I", "II", "III"], reflector="B", ring_setting=[1, 1, 1], initial_positions="AAA")
 
     assert enigma2.encode_character("A") == "B"  # Expected output: B

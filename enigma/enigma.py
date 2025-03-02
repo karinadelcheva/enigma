@@ -59,8 +59,9 @@ class Plugboard:
 
 
 class Notch:
-    def __init__(self, position):
-        self.position = string.ascii_uppercase.index(position)
+    def __init__(self, position_letter: str = "A"):
+        self.position_letter = position_letter
+        self.position = string.ascii_uppercase.index(position_letter)
 
 
 class Rotor:
@@ -71,7 +72,7 @@ class Rotor:
         self.ring_setting = ring_setting
         self.notch = Notch(notch_map[name]) if name in notch_map else None
         self.position: int = string.ascii_uppercase.index(initial_position)
-        self.initial_position = initial_position
+        self.initial_position = string.ascii_uppercase.index(initial_position)
 
         self.next_rotor = None
         self.prev_rotor = None
@@ -124,13 +125,23 @@ class Rotor:
 
         return string.ascii_uppercase[pin_pos]
 
+
     def rotate(self):
-        # Check if we should rotate the next rotor BEFORE we rotate
+        # Don't rotate if this is a reflector (reflectors don't have notches)
+        if not self.has_notch or self.name in ['Beta', 'Gamma']:
+            return
+
+        # Store position before rotation for notch checking
+        self.initial_position = self.position
         if self.has_notch and self.is_at_notch and self.next_rotor:
             self.next_rotor.rotate()
-
-        # Then rotate this rotor
+        # Perform rotation
         self.position = (self.position + 1) % ALPHABET_SIZE
+
+    def should_trigger_next_rotor(self):
+        # Check if this rotor was at its notch position before rotating
+        # Only rotors I-V have notches
+        return self.has_notch and self.is_at_notch
 
     @property
     def has_notch(self):
@@ -181,7 +192,7 @@ class Enigma:
 
     def reset(self):
         for rotor in self.rotors:
-            rotor.position = string.ascii_uppercase.index(rotor.initial_position)
+            rotor.position = rotor.initial_position
 
     def init_rotors(self, rotor_sequence, ring_setting):
         for index, rotor_name in enumerate(reversed(rotor_sequence)):
@@ -193,10 +204,6 @@ class Enigma:
         return tuple(rotor.position for rotor in self.rotors)
 
     def connect_rotors(self):
-        """Connect each rotor to its neighboring rotors in the sequence,
-        implementing a doubly-linked list structure."""
-        total_rotors = len(self.rotors)
-
         for position, rotor in enumerate(self.rotors):
             if position == 0:
                 prev_rotor = None
@@ -206,7 +213,8 @@ class Enigma:
                 next_rotor = None
             else:
                 next_rotor = self.rotors[position + 1]
-            rotor.connect(prev_rotor, next_rotor)
+            rotor.connect(next_rotor=next_rotor, prev_rotor=prev_rotor)  # Use named parameters to be explicit
+
 
     def encode_character(self, character: str):
         """Encode a character using Enigma machine.
@@ -234,7 +242,6 @@ class Enigma:
         # Final plugboard encoding
         return self.plugboard.encode(character)
 
-
     def decode_character(self, character: str):
         """Just points to encode_character. The two methods are equivalent in a DLL structure.
         """
@@ -258,13 +265,23 @@ class Enigma:
             raise ValueError(f"Invalid character: {character}. Must be an uppercase English letter.")
 
     def __rotate(self):
+        """Rotate the rotors according to the Enigma machine rules.
+            Uses the doubly-linked list structure where input_ring is the rightmost (fastest) rotor."""
+        # Check middle rotor (input_ring.prev_rotor) for double-stepping
+        middle_rotor = self.input_ring.prev_rotor
+        if middle_rotor and middle_rotor.has_notch and middle_rotor.is_at_notch:
+            # Double-stepping: middle rotor will step again when rightmost rotor steps
+            middle_rotor.rotate()
+
+        # Always rotate the input ring (rightmost/fastest rotor)
+        # This will trigger cascading rotation through notches
         self.input_ring.rotate()
 
 
 if __name__ == "__main__":
     # You can use this section to write tests and demonstrations of your enigma code.
     enigma2 = Enigma(rotor_sequence=["I", "II", "III"], reflector="B", ring_setting=[1, 1, 1], initial_positions="AAZ",
-                     plug_combinations=["HL","MO","AJ","CX","BZ","SR","NI","YW", "DG","PK"])
+                     plug_combinations=["HL", "MO", "AJ", "CX", "BZ", "SR", "NI", "YW", "DG", "PK"])
     print(enigma2.encode("HELLOWORLD"))
     enigma2 = Enigma(rotor_sequence=["I", "II", "III"], reflector="B", ring_setting=[1, 1, 1], initial_positions="AAA")
 

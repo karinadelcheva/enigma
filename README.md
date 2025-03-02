@@ -35,7 +35,7 @@ The implementation consists of several key classes:
 The implementation can be imported into Python code using:
 
 ```python
-from enigma import *
+from enigma.enigma import *
 ```
 
 The code is designed to be used as a module, with the main functionality implemented in separate Python files rather than directly in Jupyter notebook cells.

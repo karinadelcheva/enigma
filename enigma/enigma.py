@@ -1,5 +1,4 @@
 import string
-import logging
 from typing import Any
 
 mappings = {
@@ -86,10 +85,7 @@ class Rotor:
         pin_pos = string.ascii_uppercase.index(character)
 
         # 2. Apply position offset
-        pin_pos = (pin_pos + self.position) % ALPHABET_SIZE
-
-        # 3. Apply ring setting offset
-        pin_pos = (pin_pos - (self.ring_setting - 1)) % ALPHABET_SIZE
+        pin_pos = (pin_pos + self.position  - (self.ring_setting - 1)) % ALPHABET_SIZE
 
         # 4. Use the mapping to encode
         contact_char = self.mapping[pin_pos]
@@ -108,10 +104,8 @@ class Rotor:
         contact_pos = string.ascii_uppercase.index(character)
 
         # 2. Apply position offset
-        contact_pos = (contact_pos + self.position) % ALPHABET_SIZE
+        contact_pos = (contact_pos + self.position - (self.ring_setting - 1)) % ALPHABET_SIZE
 
-        # 3. Apply ring setting offset
-        contact_pos = (contact_pos - (self.ring_setting - 1)) % ALPHABET_SIZE
 
         # 4. Find the position in the mapping
         char_in_alphabet = string.ascii_uppercase[contact_pos]
@@ -127,12 +121,12 @@ class Rotor:
 
     def rotate(self):
         # Don't rotate if this is a reflector (reflectors don't have notches)
-        if not self.has_notch or self.name in ['Beta', 'Gamma']:
+        if not self.has_notch and self.name not in ['Beta', 'Gamma']:
             return
 
         # Store position before rotation for notch checking
         self.initial_position = self.position
-        if self.is_at_notch and self.next_rotor:
+        if self.name not in ['Beta', 'Gamma'] and self.is_at_notch and self.next_rotor :
             self.next_rotor.rotate()
         # Perform rotation
         self.position = (self.position + 1) % ALPHABET_SIZE
@@ -243,6 +237,8 @@ class Enigma:
             character = rotor.encode_left_to_right(character)
             print(f"Rotor {rotor.name} Encryption: {character}")
 
+        print(f"Final rotor positions after rotation: {[r.position for r in self.rotors]}")
+
         # Final plugboard encoding
         return self.plugboard.encode(character)
 
@@ -271,14 +267,13 @@ class Enigma:
     def __rotate(self):
         """Rotate the rotors according to the Enigma machine rules.
             Uses the doubly-linked list structure where input_ring is the rightmost (fastest) rotor."""
-        if self.input_ring.name in ['Beta', 'Gamma']:
-            return
 
         # Check middle rotor (input_ring.prev_rotor) for double-stepping
-        middle_rotor = self.input_ring.prev_rotor
-        if middle_rotor and middle_rotor.has_notch and middle_rotor.is_at_notch:
-            # Double-stepping: middle rotor will step again when rightmost rotor steps
-            middle_rotor.rotate()
+        if self.input_ring.name not in ['Beta', 'Gamma']:
+            middle_rotor = self.input_ring.prev_rotor
+            if middle_rotor and middle_rotor.has_notch and middle_rotor.is_at_notch:
+                # Double-stepping: middle rotor will step again when rightmost rotor steps
+                middle_rotor.rotate()
 
         # Always rotate the input ring (rightmost/fastest rotor)
         # This will trigger cascading rotation through notches
@@ -297,5 +292,4 @@ if __name__ == "__main__":
     # assert enigma2.encode_character("A") == "B"  # Expected output: B
     enigma4 = Enigma(rotor_sequence=["IV", "V", "Beta"], reflector="B", ring_setting=[14, 9, 24],
                      initial_positions="AAA")
-    print(enigma4.positions)
     assert enigma4.encode_character("H") == "Y"

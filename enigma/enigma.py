@@ -125,7 +125,6 @@ class Rotor:
 
         return string.ascii_uppercase[pin_pos]
 
-
     def rotate(self):
         # Don't rotate if this is a reflector (reflectors don't have notches)
         if not self.has_notch or self.name in ['Beta', 'Gamma']:
@@ -133,7 +132,7 @@ class Rotor:
 
         # Store position before rotation for notch checking
         self.initial_position = self.position
-        if self.has_notch and self.is_at_notch and self.next_rotor:
+        if self.is_at_notch and self.next_rotor:
             self.next_rotor.rotate()
         # Perform rotation
         self.position = (self.position + 1) % ALPHABET_SIZE
@@ -181,14 +180,20 @@ class Enigma:
         self.rotors = []
         self.positions = "".join(reversed(initial_positions))
         self.reflector = reflector
-        self.init_rotors(rotor_sequence, ring_setting)
+        self.init_rotors(rotor_sequence, list(reversed(ring_setting)))
         self.connect_rotors()
-        print(f"Rotors set to {[[rotor.position, rotor.name] for rotor in self.rotors]}.")
+        print(
+            f"Rotor sequence: {rotor_sequence}, Reflector: {reflector}, Ring Setting: {ring_setting}, Initial Positions: {initial_positions}")
+        print(f"Rotors set to {[[rotor.position, rotor.name, rotor.ring_setting] for rotor in self.rotors]}.")
         self.plugboard = Plugboard(plug_combinations)
 
     @property
     def input_ring(self) -> Rotor:
         return self.rotors[0]
+
+    @property
+    def reflector_ring(self) -> Rotor:
+        return self.rotors[-1]
 
     def reset(self):
         for rotor in self.rotors:
@@ -214,7 +219,6 @@ class Enigma:
             else:
                 next_rotor = self.rotors[position + 1]
             rotor.connect(next_rotor=next_rotor, prev_rotor=prev_rotor)  # Use named parameters to be explicit
-
 
     def encode_character(self, character: str):
         """Encode a character using Enigma machine.
@@ -267,6 +271,9 @@ class Enigma:
     def __rotate(self):
         """Rotate the rotors according to the Enigma machine rules.
             Uses the doubly-linked list structure where input_ring is the rightmost (fastest) rotor."""
+        if self.input_ring.name in ['Beta', 'Gamma']:
+            return
+
         # Check middle rotor (input_ring.prev_rotor) for double-stepping
         middle_rotor = self.input_ring.prev_rotor
         if middle_rotor and middle_rotor.has_notch and middle_rotor.is_at_notch:
@@ -275,79 +282,20 @@ class Enigma:
 
         # Always rotate the input ring (rightmost/fastest rotor)
         # This will trigger cascading rotation through notches
+        # Note: the Rotor.rotate() method contains a check if the rotor type is a rotating rotor (I-V)
         self.input_ring.rotate()
 
 
 if __name__ == "__main__":
-    # You can use this section to write tests and demonstrations of your enigma code.
-    enigma2 = Enigma(rotor_sequence=["I", "II", "III"], reflector="B", ring_setting=[1, 1, 1], initial_positions="AAZ",
-                     plug_combinations=["HL", "MO", "AJ", "CX", "BZ", "SR", "NI", "YW", "DG", "PK"])
-    print(enigma2.encode("HELLOWORLD"))
-    enigma2 = Enigma(rotor_sequence=["I", "II", "III"], reflector="B", ring_setting=[1, 1, 1], initial_positions="AAA")
+    # test_rotor_rotation_sequences()
 
-    assert enigma2.encode_character("A") == "B"  # Expected output: B
+    # enigma2 = Enigma(rotor_sequence=["I", "II", "III"], reflector="B", ring_setting=[1, 1, 1], initial_positions="AAZ",
+    #                  plug_combinations=["HL", "MO", "AJ", "CX", "BZ", "SR", "NI", "YW", "DG", "PK"])
+    # print(enigma2.encode("HELLOWORLD"))
+    # enigma2 = Enigma(rotor_sequence=["I", "II", "III"], reflector="B", ring_setting=[1, 1, 1], initial_positions="AAA")
 
-#
-# Keyboard Input: A
-# Rotors Position: AAB
-# Plugboard Encryption: A
-# Wheel 3 Encryption: C
-# Wheel 2 Encryption: D
-# Wheel 1 Encryption: F
-# Reflector Encryption: S
-# Wheel 1 Encryption: S
-# Wheel 2 Encryption: E
-# Wheel 3 Encryption: B
-# Plugboard Encryption: B
-# Output (Lampboard): B
-# -----------------------------
-#
-# Rotor III Encryption: B
-# Rotor II Encryption: A
-# Rotor I Encryption: C
-# Rotor B Encryption: U
-# Rotor I Encryption: R
-# Rotor II Encryption: G
-# Rotor III Encryption: S
-
-
-# Keyboard Input: A
-# Rotors Position: AAA
-# Plugboard Encryption: A
-# Wheel 3 Encryption: B
-# Wheel 2 Encryption: J
-# Wheel 1 Encryption: Z
-# Reflector Encryption: T
-# Wheel 1 Encryption: L
-# Wheel 2 Encryption: K
-# Wheel 3 Encryption: U
-# Plugboard Encryption: U
-# Output (Lampboard): U
-
-#
-# Keyboard Input: F
-# Rotors Position: AAA
-# Plugboard Encryption: F
-# Wheel 3 Encryption: L
-# Wheel 2 Encryption: H
-# Wheel 1 Encryption: Q
-# Reflector Encryption: E
-# Wheel 1 Encryption: A
-# Wheel 2 Encryption: A
-# Wheel 3 Encryption: T
-# Plugboard Encryption: T
-# Output (Lampboard): T
-# -----------------------------
-
-# Keyboard Input: F
-# Rotors Position: AAB
-# Plugboard Encryption: F
-# Wheel 3 Encryption: B
-# Wheel 2 Encryption: J
-# Wheel 1 Encryption: Z
-# Reflector Encryption: T
-# Wheel 1 Encryption: L
-# Wheel 2 Encryption: K
-# Wheel 3 Encryption: E
-# Plugboard Encryption: E
-# Output (Lampboard): E
+    # assert enigma2.encode_character("A") == "B"  # Expected output: B
+    enigma4 = Enigma(rotor_sequence=["IV", "V", "Beta"], reflector="B", ring_setting=[14, 9, 24],
+                     initial_positions="AAA")
+    print(enigma4.positions)
+    assert enigma4.encode_character("H") == "Y"

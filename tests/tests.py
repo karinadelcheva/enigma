@@ -44,6 +44,7 @@ ENIGMA_TEST_CASES = [
     }
 ]
 
+
 class TestEnigma(unittest.TestCase):
     def setUp(self):
         """
@@ -134,6 +135,7 @@ class TestEnigma(unittest.TestCase):
         self.assertNotEqual(result[0], result[1])
         self.assertNotEqual(result[1], result[2])
 
+
 def test_specific_enigma_configurations(self):
     """Test specific historical or known Enigma configurations"""
     for test_case in ENIGMA_TEST_CASES:
@@ -162,6 +164,37 @@ def test_specific_enigma_configurations(self):
                 f"Expected: {test_case['expected_output']}\n"
                 f"Got: {result}"
             )
+
+def test_rotor_rotation_sequences():
+    """Test various rotor rotation sequences including edge cases"""
+
+    # Test case 1: Normal three-rotor sequence
+    enigma = Enigma(rotor_sequence=["III", "II", "I"], reflector="B",
+                    ring_setting=[1, 1, 1], initial_positions="AAA")
+    # Rotate 26 times and verify each rotor position
+
+    # Test case 2: Double-stepping sequence
+    enigma = Enigma(rotor_sequence=["III", "II", "I"], reflector="B",
+                    ring_setting=[1, 1, 1], initial_positions="ADV")
+    # Should go ADV -> AEW -> BFX
+    enigma.encode("A")  # First step
+    assert [r.position for r in enigma.rotors[:-1]] == [4, 5, 23]  # AEW
+    enigma.encode("A")  # Second step
+    assert [r.position for r in enigma.rotors[:-1]] == [2, 6, 24]  # BFX
+
+    # Test case 3: Beta in rightmost position
+    enigma = Enigma(rotor_sequence=["III", "II", "Beta"], reflector="B",
+                    ring_setting=[1, 1, 1], initial_positions="AAA")
+    initial_positions = [r.position for r in enigma.rotors[:-1]]
+    enigma.encode("A")
+    # Positions should not change
+    assert [r.position for r in enigma.rotors[:-1]] == initial_positions
+
+    # Test case 4: Notch positions with ring settings
+    enigma = Enigma(rotor_sequence=["III", "II", "I"], reflector="B",
+                    ring_setting=[15, 23, 4], initial_positions="ABC")
+    # Verify notch behavior with offset ring settings
+
 
 if __name__ == '__main__':
     unittest.main()

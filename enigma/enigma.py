@@ -1,30 +1,6 @@
 import string
 from typing import Any
 
-"""
-Enigma Machine Implementation
-
-I'm happy to present my implementation of the Enigma machine. 
-Working on this project was truly enjoyable, and I appreciate the opportunity.
-For this implementation, I chose an object-oriented programming approach to create 
-more dynamic interactions between classes. A feature I am happy with developing was implementing a 
-doubly linked list property for the Rotors to enhance the rotation mechanism.
-Given more time, I would have further leveraged the doubly linked list structure 
-to improve both encoding and decoding processes. I believe this would have 
-significantly enhanced the machine's functionality and elegance. 
-I also wanted to decode the sample codes provided but couldn't complete that within the timeframe.
-One aspect I particularly wanted to develop was better visualization of the machine's operation.
-
-Future enhancements I would implement include:
-- Randomly generated rotor mappings
-- Support for an unlimited number of rotors
-- Generation of machines based on historical models and manufacturing years
-
-Please note, I have intentionally left all the classes and constants in a single file, as I've never submitted 
-code before in this way and thought it might be most safe.
-
-"""
-
 mappings = {
     "Beta": "LEYJVCNIXWPBQMDRTAKZGFUHOS",
     "Gamma": "FSOKANUERHMBTIYCWLQPZXVGJD",

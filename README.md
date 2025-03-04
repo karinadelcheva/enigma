@@ -62,3 +62,25 @@ The code implements the mechanical workings of the Enigma machine, including:
 - Plugboard character substitution
 - Reflector functionality
 - Full signal path simulation (forward and return paths)# enigma
+
+```python
+from enigma.enigma import *
+
+# Simple machine: Rotors I II III, reflector B, rings 01 01 01, position AAZ → A becomes U
+enigma1 = Enigma(rotor_sequence=["I", "II", "III"], reflector="B", ring_setting=[1, 1, 1], initial_positions="AAZ")
+assert enigma1.encode_character("A") == "U"  # Expected output: U
+
+#  III rotor model, encode, including plugboard 
+enigma2 = Enigma(rotor_sequence=["I", "II", "III"], reflector="B", ring_setting=[1, 1, 1], initial_positions="AAZ",
+                 plug_combinations=["HL", "MO", "AJ", "CX", "BZ", "SR", "NI", "YW", "DG", "PK"])
+print("HELLOWORLD")
+print(enigma2.encode("HELLOWORLD")) # RFKTMBXVVW
+
+# IV rotor model decode 
+enigma3 = Enigma(rotor_sequence=["IV", "V", "Beta", "I"], reflector="A", ring_setting=[18, 24, 3, 5],
+                 initial_positions="EZGP",
+                 plug_combinations=["PC", "XZ", "FM", "QA", "ST", "NB", "HY", "OR", "EV", "IU"])
+print("BUPXWJCDPFASXBDHLBBIBSRNWCSZXQOLBNXYAXVHOGCUUIBCVMPUZYUUKHI")
+print(enigma2.decode("BUPXWJCDPFASXBDHLBBIBSRNWCSZXQOLBNXYAXVHOGCUUIBCVMPUZYUUKHI"))
+# CONGRATULATIONSONPRODUCINGYOURWORKINGENIGMAMACHINESIMULATOR
+```

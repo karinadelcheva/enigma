@@ -1,0 +1,48 @@
+
+.Rotor {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 100px;
+    height: 100px;
+    background-color: #3498db;
+    border-radius: 50%;
+    animation: rotation 2s infinite linear;
+    position: relative;
+}
+
+/* Animation for the rotation effect */
+@keyframes rotation {
+    0% {
+        transform: rotate(0deg);
+    }
+    100% {
+        transform: rotate(360deg);
+    }
+}
+
+/* Inner content style, if applicable */
+.Rotor-content {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 70%;
+    height: 70%;
+    background-color: #ffffff;
+    border-radius: 50%;
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+}
+
+/* Optional hover effect */
+.Rotor:hover {
+    background-color: #2980b9;
+    animation-duration: 1.5s;
+}
+
+/* Transition for smoother hover effect */
+.Rotor {
+    transition: background-color 0.3s ease, animation-duration 0.3s ease;
+}
